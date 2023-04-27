@@ -183,10 +183,3 @@ if __name__ == "__main__":
         answer = chat.ask_question(query)
         console.print(f"Answer: {answer}", style="green")
 
-
-    
-
-
-
-
-
