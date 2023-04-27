@@ -1,7 +1,8 @@
 # Langchain_pdf_chroma
 
-### 현재 아직 FastAPI로 구현해놓지 않아 단독 실행해서 체크 할 수 있는 것은 main_prototype.py이다.
-* CLI 환경에서 작동하게 작성
+### FastAPI 형태 main.py 개발 완료.
+
+* CLI 환경에서 작동하는 skeleton code : main_prototype.py
 
 ### 기능
 * .pdf 파일을 읽어 유저 질문에 대한 것은 ChatGPT가 답변한다.
