@@ -148,7 +148,7 @@ class Chat_With_PDFs_and_Summarize:
 chat = Chat_With_PDFs_and_Summarize()
 
 
-@app.post("/load_document")
+@app.post("/load_document/")
 async def load_document(
     file: UploadFile = File(...), 
     start_page: Optional[int] = None, 
@@ -182,7 +182,7 @@ async def ask_question(query: str):
         return {"error": str(e)}
     
 
-@app.post("/load_txt")
+@app.post("/load_txt/")
 async def load_txt(file: UploadFile = File(...)):
     # Save the uploaded file to the "documents" directory
     file_path = os.path.join("documents", file.filename)
