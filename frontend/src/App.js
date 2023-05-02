@@ -25,8 +25,12 @@ function App() {
       let response;
       if (file.type === "application/pdf") {
         response = await axios.post("http://localhost:8000/load_document/", formData);
-      } else {
+      } else if (file.type === "text/plain") {
         response = await axios.post("http://localhost:8000/load_txt/", formData);
+      } else if (file.type === "text/csv") {
+        response = await axios.post("http://localhost:8000/load_csv/", formData);
+      } else {
+        throw new Error("Unsupported file type.");
       }
       alert("Documents added successfully!");
     } catch (error) {
@@ -46,7 +50,7 @@ function App() {
       text: inputValue.trim(),
       sender: "user",
       timestamp: new Date(),
-      fileType: file.type === "application/pdf" ? "pdf" : "text", // Add file type flag
+      fileType: file.type === "application/pdf" ? "pdf" : (file.type === "text/plain" ? "txt" : "csv"), // Add file type flag
     };
     setMessages((messages) => [...messages, messageObject]);
     setInputValue("");
@@ -57,7 +61,12 @@ function App() {
       // } else {
       //   response = await axios.post(`http://localhost:8000/query_txts/?query=${messageObject.text}`);
       // }
-      response = await axios.post(`http://localhost:8000/ask_question?query=${messageObject.text}`);
+
+      if(messageObject.fileType === "csv") {
+         response = await axios.post(`http://localhost:8000/ask_csv?query=${messageObject.text}`);
+      } else {
+        response = await axios.post(`http://localhost:8000/ask_question?query=${messageObject.text}`);
+      }
       
       const botMessageObject = {
         text: response.data.answer,

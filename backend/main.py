@@ -15,6 +15,10 @@ from PyPDF2 import PdfReader
 from pydantic import BaseModel
 from typing import List, Optional
 
+from langchain.agents import create_csv_agent
+from langchain.llms import OpenAI
+import pandas as pd
+
 app = FastAPI()
 
 # Add CORS support
@@ -144,6 +148,19 @@ class Chat_With_PDFs_and_Summarize:
         embeddings = OpenAIEmbeddings(openai_api_key=OPENAI_API_KEY)
         self.db_index = Chroma.from_documents(texts, embeddings)
 
+    
+    # New! csv function
+    def load_csv(self, file_path):
+        self.df = pd.read_csv(file_path)
+        self.agent = create_csv_agent(OpenAI(temperature=0),
+                                      file_path,
+                                      verbose=True
+                                     )
+
+    def ask_csv(self, query: str):
+        return self.agent.run(query)
+
+
 
 chat = Chat_With_PDFs_and_Summarize()
 
@@ -196,3 +213,27 @@ async def load_txt(file: UploadFile = File(...)):
 
     return {"message": "Text file loaded successfully."}
 
+
+# csv 위해서 새로 만든 것.
+@app.post("/load_csv/")
+async def load_csv(file: UploadFile = File(...)):
+    # Save the uploaded file to the "documents" directory
+    file_path = os.path.join("documents", file.filename)
+    with open(file_path, 'wb') as buffer:
+        buffer.write(file.file.read())
+
+    chat.load_csv(file_path)
+
+    # Remove the uploaded file from the "documents" directory
+    # os.remove(file_path)
+
+    return {"message": "CSV file loaded successfully."}
+
+
+@app.post("/ask_csv/")
+async def answer_csv(query: str):
+    try:
+        answer = chat.ask_csv(query)
+        return {"answer": answer}
+    except ValueError as e:
+        return {"error": str(e)}
