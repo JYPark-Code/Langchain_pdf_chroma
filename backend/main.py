@@ -10,7 +10,7 @@ from langchain.chains.summarize import load_summarize_chain
 from modify import OpenAIEmbeddings
 from langchain.vectorstores import Chroma
 from langchain.chains import RetrievalQA
-from langchain.text_splitter import CharacterTextSplitter
+from langchain.text_splitter import CharacterTextSplitter, RecursiveCharacterTextSplitter
 from PyPDF2 import PdfReader
 from pydantic import BaseModel
 from typing import List, Optional
@@ -55,52 +55,59 @@ class Chat_With_PDFs_and_Summarize:
     def load_document(self, file_path, page_range=None):
         # Load the document using PyPDFLoader
         self.loader = PyPDFLoader(file_path)
-        # Split the document into pages
-        self.pages = self.loader.load_and_split()
 
-        if page_range is None:
-            new_docs = [Document(page_content=t.page_content) for t in self.pages]
-        else:
-            new_docs = [Document(page_content=t.page_content) for t in self.pages[page_range[0]:page_range[1]]]
+        # Text Token cutting 방식으로 회귀 *한글이라 1000 -> 500 상황에 따라서 250도 가능?
+        self.pages = self.loader.load()
+        text_splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=0)
+        texts = text_splitter.split_documents(self.pages)
+        new_docs = [ t for t in texts]
+
+        # Split the document into pages
+        # self.pages = self.loader.load_and_split()
+
+        # if page_range is None:
+        #     new_docs = [Document(page_content=t.page_content) for t in self.pages]
+        # else:
+        #     new_docs = [Document(page_content=t.page_content) for t in self.pages[page_range[0]:page_range[1]]]
         
         # Calculate a hash for the Loaded documents
-        new_hash = hashlib.md5(''.join([doc.page_content for doc in new_docs]).encode
-                               ()).hexdigest()
+        # new_hash = hashlib.md5(''.join([doc.page_content for doc in new_docs]).encode
+        #                        ()).hexdigest()
         
         # Check whether the db index already exists
-        if not os.path.exists(self.persist_directory):
-            os.makedirs(self.persist_directory)
+        # if not os.path.exists(self.persist_directory):
+        #     os.makedirs(self.persist_directory)
         
-        if os.path.exists(os.path.join(self.persist_directory, 'doc_hash.txt')):
-            with open(os.path.join(self.persist_directory, 'doc_hash.txt'), 'r') as f:
-                stored_hash = f.read().strip()
+        # if os.path.exists(os.path.join(self.persist_directory, 'doc_hash.txt')):
+        #     with open(os.path.join(self.persist_directory, 'doc_hash.txt'), 'r') as f:
+        #         stored_hash = f.read().strip()
             
-            if new_hash == stored_hash:
-                # Loading an existing index from disk
-                print("Loading the index from the disk...")
-                self.db_index = Chroma(persist_directory=self.persist_directory,
-                                       embedding_function=self.embeddings)
-            else:
-                self.docs = new_docs
-                self.doc_hash = new_hash
-                # Create a new index
-                print("Creating a new index...")
-                self.db_index = Chroma.from_documents(self.docs, self.embeddings,
-                                                      persist_directory=self.persist_directory)
+        #     if new_hash == stored_hash:
+        #         # Loading an existing index from disk
+        #         print("Loading the index from the disk...")
+        #         self.db_index = Chroma(persist_directory=self.persist_directory,
+        #                                embedding_function=self.embeddings)
+        #     else:
+        #         self.docs = new_docs
+        #         self.doc_hash = new_hash
+        #         # Create a new index
+        #         print("Creating a new index...")
+        #         self.db_index = Chroma.from_documents(self.docs, self.embeddings,
+        #                                               persist_directory=self.persist_directory)
                 
-                # Save the new Hash in the index directory
-                with open(os.path.join(self.persist_directory, 'doc_hash.txt'), 'w') as f:
-                    f.write(self.doc_hash)
-        else:
-            self.docs = new_docs
-            self.doc_hash = new_hash
-            # Create a new Index
-            print("Creating a new index...")
-            self.db_index = Chroma.from_documents(self.docs, self.embeddings,
-                                                  persist_directory=self.persist_directory)
-            # Save the new Hash in the index directory
-            with open(os.path.join(self.persist_directory, 'doc_hash.txt'), 'w') as f:
-                f.write(self.doc_hash)
+        #         # Save the new Hash in the index directory
+        #         with open(os.path.join(self.persist_directory, 'doc_hash.txt'), 'w') as f:
+        #             f.write(self.doc_hash)
+        # else:
+        self.docs = new_docs
+        # self.doc_hash = new_hash
+        # Create a new Index
+        # print("Creating a new index...")
+        self.db_index = Chroma.from_documents(self.docs, self.embeddings,
+                                                persist_directory=self.persist_directory)
+        # Save the new Hash in the index directory
+        # with open(os.path.join(self.persist_directory, 'doc_hash.txt'), 'w') as f:
+        #     f.write(self.doc_hash)
 
     # Generate a summary of the loaded document
     def summarize(self, chain_type="map_reduce"):
@@ -138,12 +145,12 @@ class Chat_With_PDFs_and_Summarize:
         return response
     
 
-    # txt function 위해서 새로 만든 것.
+    # txt function 위해서 새로 만든 것. 1000 -> 500
     def load_txt(self, file_path):
         # Load the document using TextLoader
         self.loader = TextLoader(file_path)
         documents = self.loader.load()
-        text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=0)
+        text_splitter = CharacterTextSplitter(chunk_size=500, chunk_overlap=0)
         texts = text_splitter.split_documents(documents)
         embeddings = OpenAIEmbeddings(openai_api_key=OPENAI_API_KEY)
         self.db_index = Chroma.from_documents(texts, embeddings)

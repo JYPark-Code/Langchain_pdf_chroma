@@ -3,6 +3,10 @@ import React, { useState, useRef, useEffect } from "react";
 import "./App.css";
 import { FaFile } from "react-icons/fa";
 import { FaPaperPlane } from "react-icons/fa";
+import paletteImage from "./img/palette.png"; // Import the image file
+import robotImage from "./img/robot.png"; // Import the robot image
+import userImage from "./img/user.png"; // Import the user image
+
 
 function App() {
   const [messages, setMessages] = useState([]);
@@ -56,11 +60,6 @@ function App() {
     setInputValue("");
     try {
       let response;
-      // if (messageObject.fileType === "pdf") {
-      //   response = await axios.post(`http://localhost:8000/query/?query=${messageObject.text}`);
-      // } else {
-      //   response = await axios.post(`http://localhost:8000/query_txts/?query=${messageObject.text}`);
-      // }
 
       if(messageObject.fileType === "csv") {
          response = await axios.post(`http://localhost:8000/ask_csv?query=${messageObject.text}`);
@@ -73,6 +72,14 @@ function App() {
         sender: "bot",
         timestamp: new Date(),
       };
+
+      // Check if the bot's response is empty or has a length of 0
+      if (!botMessageObject.text || botMessageObject.text.length === 0) {
+        // If the response is empty, ask the same question again
+        response = await axios.post(`http://localhost:8000/ask_question?query=${messageObject.text}`);
+        botMessageObject.text = response.data.answer || "죄송합니다. 해당 질문에 대해서 답변할 수 없습니다.";
+      }
+
       setMessages((messages) => [...messages, botMessageObject]);
     } catch (error) {
       console.error("Error:", error);
@@ -83,13 +90,25 @@ function App() {
   
   return (
     <div className="app-container">
-      <h1>LangChain & ChatGPT</h1>
-      <div className="attachment-input">
+      <img src={paletteImage} alt="palette" style={{ width: "15%", height: "auto" }}/>
+      <br />
+      {/* <div className="attachment-input">
         <input type="file" onChange={(event) => setFile(event.target.files[0])} />
         <button onClick={handleFileUpload}>
           {isLoading ? <div className="loader"></div> : <FaFile />}
         </button>
+      </div> */}
+      <div className="attachment-input">
+        <label htmlFor="file-upload" className="button-container">
+          <span className="button-text"><FaFile /> 파일 선택</span>
+          <input id="file-upload" type="file" onChange={(event) => setFile(event.target.files[0])} />
+        </label>
+        <span className="file-path">{file ? file.name : "선택된 파일 없음"}</span>
+        <button onClick={handleFileUpload} className="button-container-white">
+          {isLoading ? <div className="loader"></div> : "Upload"}
+        </button>
       </div>
+
       <br />
       <div ref={chatContainerRef} className="chat-container">
         {messages.map((message, index) => (
@@ -99,7 +118,22 @@ function App() {
               message.sender === "user" ? "user-message" : "bot-message"
             }`}
           >
-            <div className="message-text">{message.text}</div>
+            {/* add profile pic */}
+            {message.sender === "user" ? (
+              <>
+                <img src={userImage} alt="User Profile" className="profile-image" />
+                <div className="message-text">
+                  {message.text}
+                </div>
+              </>
+            ) : (
+              <>
+                <img src={robotImage} alt="Robot Profile" className="profile-image" />
+                <div className="message-text">
+                  {message.text}
+                </div>
+              </>
+            )}
             <div className="message-timestamp">
               {message.timestamp.toLocaleTimeString([], {
                 hour: "2-digit",
@@ -110,6 +144,7 @@ function App() {
         ))}
         {isBotLoading && (
           <div className="chat-message bot-message">
+             <img src={robotImage} alt="Robot Profile" className="profile-image" />
              <div className="bot-typing-animation">
               <span></span>
               <span></span>
@@ -127,7 +162,7 @@ function App() {
           disabled={isBotLoading}
         />
         <button type="submit" disabled={isBotLoading}>
-          {isBotLoading ? "Sending..." : <FaPaperPlane />}
+          {isBotLoading ? "Sending..." : <>Send {<FaPaperPlane />}</>}
         </button>
       </form>
     </div>
